@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Amphitheater Seating Arrangement</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to right, #83a4d4, #b6fbff);
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            color: #333;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: #fff;
+        }
+
+        .container {
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            max-width: 700px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        canvas {
+            border: 3px solid #4CAF50;
+            border-radius: 8px;
+            margin-top: 20px;
+            background-color: #f9f9f9;
+        }
+
+        .button-container {
+            margin: 20px 0;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .info {
+            margin: 10px 0;
+            color: #777;
+        }
+
+        .rotation-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        input[type="range"] {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Amphitheater Seating Arrangement</h1>
+        <p>Drag and rotate the triangles inside the square to test seating arrangements. You can add or remove rows (triangles).</p>
+
+        <div class="button-container">
+            <button id="addTriangle">Add Triangle</button>
+            <button id="removeTriangle" disabled>Remove Triangle</button>
+        </div>
+
+        <canvas id="seatingCanvas" width="500" height="500"></canvas>
+        <p class="info">Current Triangles: <span id="triangleCount">3</span></p>
+
+        <div class="rotation-container">
+            <label for="rotation">Rotate Triangle: </label>
+            <input type="range" id="rotation" min="0" max="360" value="0">
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('seatingCanvas');
+        const ctx = canvas.getContext('2d');
+        const addTriangleBtn = document.getElementById('addTriangle');
+        const removeTriangleBtn = document.getElementById('removeTriangle');
+        const triangleCountDisplay = document.getElementById('triangleCount');
+        const rotationSlider = document.getElementById('rotation');
+
+        let triangles = [
+            { x: 100, y: 100, size: 50, angle: 0, dragging: false },
+            { x: 200, y: 150, size: 50, angle: 0, dragging: false },
+            { x: 150, y: 250, size: 50, angle: 0, dragging: false }
+        ];
+
+        let dragIndex = -1;
+        let selectedTriangle = null;
+
+        // Function to draw square (amphitheater area)
+        function drawSquare() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(50, 50, 400, 400); // Square boundary
+        }
+
+        // Function to draw triangles
+        function drawTriangles() {
+            for (let triangle of triangles) {
+                ctx.save();
+                ctx.translate(triangle.x, triangle.y); // Move to the triangle's position
+                ctx.rotate(triangle.angle * Math.PI / 180); // Rotate triangle
+                ctx.beginPath();
+                ctx.moveTo(0, -triangle.size); // Top point of triangle
+                ctx.lineTo(-triangle.size / 2, 0); // Bottom left point
+                ctx.lineTo(triangle.size / 2, 0); // Bottom right point
+                ctx.closePath();
+                ctx.fillStyle = 'blue';
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // Function to check if mouse is inside a triangle
+        function isMouseInTriangle(mx, my, triangle) {
+            let dx = mx - triangle.x;
+            let dy = my - triangle.y;
+            return dx * dx + dy * dy < triangle.size * triangle.size;
+        }
+
+        // Handle mouse down event
+        canvas.addEventListener('mousedown', function (e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Check if mouse is over a triangle
+            for (let i = 0; i < triangles.length; i++) {
+                if (isMouseInTriangle(mouseX, mouseY, triangles[i])) {
+                    dragIndex = i;
+                    triangles[i].dragging = true;
+                    selectedTriangle = triangles[i];
+                    rotationSlider.value = selectedTriangle.angle;
+                    break;
+                }
+            }
+        });
+
+        // Handle mouse move event
+        canvas.addEventListener('mousemove', function (e) {
+            if (dragIndex === -1) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Move the selected triangle
+            if (triangles[dragIndex].dragging) {
+                triangles[dragIndex].x = mouseX;
+                triangles[dragIndex].y = mouseY;
+                updateCanvas();
+            }
+        });
+
+        // Handle mouse up event
+        canvas.addEventListener('mouseup', function () {
+            if (dragIndex !== -1) {
+                triangles[dragIndex].dragging = false;
+                dragIndex = -1;
+            }
+        });
+
+        // Update the canvas by redrawing everything
+        function updateCanvas() {
+            drawSquare();
+            drawTriangles();
+            triangleCountDisplay.textContent = triangles.length;
+            removeTriangleBtn.disabled = triangles.length <= 1;
+        }
+
+        // Add a new triangle (no limit now)
+        addTriangleBtn.addEventListener('click', () => {
+            triangles.push({ x: 100, y: 100, size: 50, angle: 0, dragging: false });
+            updateCanvas();
+        });
+
+        // Remove the last triangle
+        removeTriangleBtn.addEventListener('click', () => {
+            if (triangles.length > 1) {
+                triangles.pop();
+                selectedTriangle = null;
+                updateCanvas();
+            }
+        });
+
+        // Handle rotation slider change
+        rotationSlider.addEventListener('input', () => {
+            if (selectedTriangle) {
+                selectedTriangle.angle = parseInt(rotationSlider.value);
+                updateCanvas();
+            }
+        });
+
+        // Initial drawing
+        updateCanvas();
+    </script>
+</body>
+</html>
